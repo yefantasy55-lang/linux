@@ -37,9 +37,10 @@ public:
             exit(1);
         }
         LOG(LogLevel::INFO) << "socket success, sockfd : " << _sockfd;
-        struct sockaddr_in local;        // 创建套接字结构体
-        bzero(&local, sizeof(local));    // 将结构体清零
-        local.sin_family = htons(_port); // 将端口统一转成大端形式
+        struct sockaddr_in local;      // 创建套接字结构体
+        bzero(&local, sizeof(local));  // 将结构体清零
+        local.sin_family = AF_INET;    // 网络套接字
+        local.sin_port = htons(_port); // 将端口统一转成大端形式
         // local.sin_addr.s_addr = inet_addr(_ip.c_str());                  // 将点分十进制转化为网络序列
         local.sin_addr.s_addr = INADDR_ANY;                              // 无限制绑定的ip
         int n = bind(_sockfd, (struct sockaddr *)&local, sizeof(local)); // 显示绑定套接字
