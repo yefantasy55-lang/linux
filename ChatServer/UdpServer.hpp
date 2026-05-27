@@ -13,7 +13,7 @@
 using namespace yzq;
 
 const int defaultfd = -1;
-using func_t = std::function<std::string(const std::string &, InetAddr &)>;
+using func_t = std::function<std::string(int sockfd, const std::string &, InetAddr &)>;
 
 class UdpServer
 {
@@ -62,8 +62,7 @@ public:
             {
                 InetAddr client(peer);
                 buffer[s] = 0;
-                std::string result = _fun(buffer, client);
-                sendto(_sockfd, result.c_str(), result.size(), 0, (struct sockaddr *)&peer, len); // 发送消息
+                _fun(_sockfd,buffer, client);
             }
         }
     }
