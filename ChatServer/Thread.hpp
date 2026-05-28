@@ -118,6 +118,11 @@ namespace yzq
             return _name;
         }
 
+        pthread_t Id()
+        {
+            return _tid;
+        }
+
         ~Thread() {}
 
     private:
