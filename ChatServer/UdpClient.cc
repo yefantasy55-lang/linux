@@ -7,7 +7,8 @@
 #include <sys/socket.h>
 #include "Thread.hpp"
 
-int sockfd = socket(AF_INET, SOCK_DGRAM, 0); // 网络套接字(UDP)
+using namespace yzq;
+
 int sockfd = 0;
 std::string server_ip;    // 服务器ip
 uint16_t server_port = 0; // 服务器端口
@@ -20,7 +21,7 @@ void Recv()
         char buffer[1024];
         struct sockaddr_in peer;
         socklen_t len = sizeof(peer);
-        int n = recvfrom(sockfd, &buffer, sizeof(buffer) - 1, 0, (sockaddr *)&peer, &len);
+        int n = recvfrom(sockfd, buffer, sizeof(buffer) - 1, 0, (sockaddr *)&peer, &len);
         if (n > 0)
         {
             buffer[n] = 0;
@@ -58,8 +59,6 @@ void Send()
     }
 }
 
-using namespace yzq;
-
 int main(int argc, char *argv[])
 {
     if (argc != 3)
@@ -67,8 +66,14 @@ int main(int argc, char *argv[])
         std::cerr << "Usage: " << argv[0] << " server_ip server_port" << std::endl;
         return 1;
     }
-    server_ip = argv[1];              // 服务器ip
-    server_port = std::stoi(argv[2]); // 端口
+    server_ip = argv[1];                     // 服务器ip
+    server_port = std::stoi(argv[2]);        // 端口
+    sockfd = socket(AF_INET, SOCK_DGRAM, 0); // 网络套接字(UDP)
+    if (sockfd < 0)
+    {
+        std::cerr << "socket error" << std::endl;
+        return 2;
+    }
 
     // 接收服务器处理完的结果
     Thread recver(Recv); // 负责收消息

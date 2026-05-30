@@ -1,19 +1,20 @@
+#pragma once
+
 #include <iostream>
 #include <string>
+#include <functional>
 #include <strings.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <functional>
 #include "Log.hpp"
 #include "InetAddr.hpp"
-#include "Dict.hpp"
 
 using namespace yzq;
 
 const int defaultfd = -1;
-using func_t = std::function<std::string(int sockfd, const std::string &, InetAddr &)>;
+using func_t = std::function<void(int sockfd, const std::string &, InetAddr &)>;
 
 class UdpServer
 {
@@ -57,7 +58,7 @@ public:
             char buffer[1024];       // 信息缓冲区，用于存储信息
             struct sockaddr_in peer; // 用来存储发送过来消息的套接字信息
             socklen_t len = sizeof(peer);
-            ssize_t s = recvfrom(_sockfd, &buffer, sizeof(buffer) - 1, 0, (struct sockaddr *)&peer, &len);
+            ssize_t s = recvfrom(_sockfd, buffer, sizeof(buffer) - 1, 0, (struct sockaddr *)&peer, &len);
             if (s > 0)
             {
                 InetAddr client(peer);

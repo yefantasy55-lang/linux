@@ -56,7 +56,7 @@ public:
         std::string send_message = peer.StringAddr() + "# " + message; // 127.0.0.1:8080# 你好
         for (auto &user : _online_user)
         {
-            sendto(sockfd, send_message.c_str(), message.size(), 0,
+            sendto(sockfd, send_message.c_str(), send_message.size(), 0,
                    (const struct sockaddr *)&(user.NetAddr()), sizeof(user.NetAddr()));
         }
 
