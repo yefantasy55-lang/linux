@@ -12,7 +12,6 @@ public:
     InetAddr(struct sockaddr_in addr)
     :_addr(addr)
     {
-        _ip=_addr.sin_addr.s_addr;
         _port=ntohs(_addr.sin_port);
         _ip=inet_ntoa(_addr.sin_addr);
     }

@@ -5,16 +5,29 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <cstring>
 
 class InetAddr
 {
 public:
+    // 网络转主机
     InetAddr(struct sockaddr_in addr)
         : _addr(addr)
     {
-        _ip = _addr.sin_addr.s_addr;
         _port = ntohs(_addr.sin_port);
-        _ip = inet_ntoa(_addr.sin_addr);
+        char ipbuffer[64];
+        inet_ntop(AF_INET, &_addr.sin_addr, ipbuffer, sizeof(ipbuffer));
+        _ip = ipbuffer;
+    }
+
+    // 主机转网络
+    InetAddr(const std::string ip, uint16_t port)
+        : _ip(ip), _port(port)
+    {
+        memset(&_addr, 0, sizeof(_addr));
+        _addr.sin_family = AF_INET; // IPV4
+        _addr.sin_port = htons(_port);
+        inet_pton(AF_INET, _ip.c_str(), &_addr.sin_addr);
     }
 
     std::string Ip()
