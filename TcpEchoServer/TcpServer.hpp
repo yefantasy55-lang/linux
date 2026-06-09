@@ -9,7 +9,7 @@
 
 using namespace yzq;
 
-using fun_t = std::function<void(const std::string &, InetAddr &)>;
+using fun_t = std::function<std::string(const std::string &, InetAddr &)>;
 
 const static int defaultsockfd = -1;
 const static int backlog = 8; // 最大的连接数量
@@ -25,7 +25,7 @@ public:
     void Init()
     {
         _listensockfd = socket(AF_INET, SOCK_STREAM, 0); // 创建TCP套接字
-        if (_listensockfd)
+        if (_listensockfd < 0)
         {
             LOG(LogLevel::FATAL) << "socket error";
             exit(SOCKET_ERR);
@@ -51,6 +51,35 @@ public:
 
     void Service(int sockfd, InetAddr &peer)
     {
+        char buffer[1024];
+        // 1. 先读取数据
+        // a. n>0: 读取成功
+        // b. n<0: 读取失败
+        // c. n==0: 对端把链接关闭了，读到了文件的结尾 --- pipe
+        while (true)
+        {
+            ssize_t n = read(sockfd, buffer, sizeof(buffer) - 1);
+            if (n > 0)
+            {
+                buffer[n] = 0;
+                LOG(LogLevel::DEBUG) << peer.StringAddr() << " #" << buffer;
+
+                std::string echo_string = _func(buffer, peer); // 回调处理
+                write(sockfd, echo_string.c_str(), echo_string.size());
+            }
+            else if (n == 0)
+            {
+                LOG(LogLevel::DEBUG) << peer.StringAddr() << " 退出了...";
+                close(sockfd);
+                break;
+            }
+            else
+            {
+                LOG(LogLevel::DEBUG) << peer.StringAddr() << " 异常...";
+                close(sockfd);
+                break;
+            }
+        }
     }
 
     void Run()
@@ -66,6 +95,12 @@ public:
                 LOG(LogLevel::WARNING) << "accept error";
                 continue;
             }
+
+            InetAddr addr(peer);
+            LOG(LogLevel::INFO) << "accept success,peer addr: " << addr.StringAddr();
+
+            // version 0
+            Service(sockfd, addr);
         }
         _isrunning = false;
     }
@@ -78,5 +113,5 @@ private:
     uint16_t _port;
     int _listensockfd; // 监听套接字
     bool _isrunning;
-    fun_t _func;
+    fun_t _func; // 回调处理
 };

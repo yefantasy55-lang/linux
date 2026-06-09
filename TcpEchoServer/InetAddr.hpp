@@ -27,7 +27,7 @@ public:
 
     // 主机转网络（port)
     InetAddr(uint16_t port)
-        : _ip(0), _port(port)
+        : _ip("0.0.0.0"), _port(port)
     {
         memset(&_addr, 0, sizeof(_addr));
         _addr.sin_family = AF_INET;
@@ -50,7 +50,7 @@ public:
         return _addr;
     }
 
-    struct sockaddr *NetAddrPtr()
+    const struct sockaddr *NetAddrPtr()
     {
         return CONV(_addr);
     }
