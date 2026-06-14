@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
         ssize_t size = read(sockfd, buffer, sizeof(buffer) - 1);
         if (size > 0)
         {
-            buffer[n] = 0;
+            buffer[size] = 0;
             std::cout << "server echo# " << buffer << std::endl;
         }
     }

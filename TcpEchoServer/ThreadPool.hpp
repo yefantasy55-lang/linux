@@ -11,7 +11,7 @@
 namespace yzq
 {
     using namespace yzq;
-    static const int gnum = 5;
+    static const int gnum = 15;
     template <typename T>
     class ThreadPool
     {
