@@ -10,6 +10,7 @@
 using namespace yzq;
 
 using fun_t = std::function<std::string(const std::string &, InetAddr &)>;
+using task_t = std::function<void()>;
 
 const static int defaultsockfd = -1;
 const static int backlog = 8; // 最大的连接数量
@@ -143,11 +144,14 @@ public:
             // }
 
             // version 2 (多线程版本)
-            ThreadData *td = new ThreadData(sockfd, addr, this);
-            pthread_t pid;
-            pthread_create(&pid, nullptr, Routine, td);  // 子线程执行服务
+            // ThreadData *td = new ThreadData(sockfd, addr, this);
+            // pthread_t pid;
+            // pthread_create(&pid, nullptr, Routine, td);  // 子线程执行服务
 
             // version3 (线程池版本)
+            ThreadPool<task_t>::GetInstance()->Enqueue([this,sockfd,&addr](){
+                this->Service(sockfd,addr);
+            });
         }
         _isrunning = false;
     }

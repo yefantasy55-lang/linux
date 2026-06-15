@@ -1,5 +1,6 @@
+#include "Command.hpp"
 #include "TcpServer.hpp"
-#include "Common.hpp"
+#include "Dict.hpp"
 
 void Usage(std::string proc)
 {
@@ -22,9 +23,14 @@ int main(int argc, char *argv[])
         exit(USAGE_ERR);
     }
 
+    Dict dict;
+    dict.LoadDict();
+
     uint16_t port = std::stoi(argv[1]);
     Enable_Console_Log_Strategy();
-    std::unique_ptr<TcpServer> tsvr = std::make_unique<TcpServer>(port, defaulthandler);
+    std::unique_ptr<TcpServer> tsvr = std::make_unique<TcpServer>(port, [&dict](const std::string &word, InetAddr &addr){
+        return dict.Translate(word,addr);
+    });
 
     tsvr->Init();
     tsvr->Run();
