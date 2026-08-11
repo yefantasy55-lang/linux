@@ -8,6 +8,7 @@
 #include "Log.hpp"
 #include <sstream>
 #include "Util.hpp"
+#include <functional>
 
 using namespace yzq;
 
@@ -23,7 +24,7 @@ class HttpRequest
 {
 public:
     HttpRequest()
-        : _blankline(glinespace)
+        : _blankline(glinespace), _is_interact(false)
     {
     }
 
@@ -52,9 +53,6 @@ public:
 
         // 反序列化
         ParseReqLine(reqline);
-        LOG(LogLevel::DEBUG) << "_method: " << _method;
-        LOG(LogLevel::DEBUG) << "_uri: " << _uri;
-        LOG(LogLevel::DEBUG) << "_version: " << _version;
         if (_uri == "/")
         {
             _uri = webroot + _uri + homepage; // ./wwwroot/index.html
@@ -63,12 +61,39 @@ public:
         {
             _uri = webroot + _uri; // ./wwwroot/a/b/c.html
         }
-        return true;
+
+        // _uri: ./wwwroot/login?username=zhangsan&password=123456(GET提交)
+        LOG(LogLevel::DEBUG) << "_method: " << _method;
+        LOG(LogLevel::DEBUG) << "_uri: " << _uri;
+        LOG(LogLevel::DEBUG) << "_version: " << _version;
+        const std::string arg_sep = "?";
+        auto pos = _uri.find(arg_sep);
+        if (pos == std::string::npos) // 没有参数
+        {
+            return true;
+        }
+        else
+        {
+            _is_interact = true;
+            _args = _uri.substr(pos + arg_sep.size());
+            _uri = _uri.substr(0, pos);
+            return true;
+        }
     }
 
     std::string Uri()
     {
         return _uri;
+    }
+
+    std::string Args()
+    {
+        return _args;
+    }
+
+    bool isInteract()
+    {
+        return _is_interact;
     }
 
 private:
@@ -79,6 +104,9 @@ private:
     std::unordered_map<std::string, std::string> _headers; // 请求头
     std::string _blankline;                                // 空行
     std::string _text;                                     // 载荷（正文）
+
+    std::string _args; // 用户提交的参数
+    bool _is_interact; // 是否交互
 };
 
 class HttpResponse
@@ -109,6 +137,12 @@ public:
             _desc = "OK";
             break;
 
+        case 301: // 永久重定向
+            _desc = "Moved Permanently";
+
+        case 302: // 临时重定向
+            _desc = _desc = "See Other";
+
         case 404:
             _desc = "Not Found";
             break;
@@ -116,6 +150,12 @@ public:
         default:
             break;
         }
+    }
+
+    // 设置正文
+    void SetText(const std::string &text)
+    {
+        _text = text;
     }
 
     // 根据响应内容匹配响应类型
@@ -161,22 +201,30 @@ public:
         int filesize = 0; // 正文长度
         if (!res)
         {
+            // version1(手动重定向)
             _text.clear();
             LOG(LogLevel::WARNING) << "client want get : " << _targetfile << " but not found";
             SetCode(404);
             _targetfile = webroot + page_404; // 重定向到404界面
             Util::ReadFileContent(_targetfile, &_text);
+            std::string suffix = Uri2Suffix(_targetfile);
+            filesize = Util::FileSize(_targetfile);
+            SetHeader("Content-Type", suffix);
+            SetHeader("Content-Lengt", std::to_string(filesize));
+
+            // version2(利用状态码让浏览器自动重定向)
+            // SetCode(301);
+            // SetHeader("Location","http://123456:8080/404.html");
         }
         else
         {
             LOG(LogLevel::DEBUG) << "读取文件: " << _targetfile;
-
             SetCode(200);
+            std::string suffix = Uri2Suffix(_targetfile);
+            filesize = Util::FileSize(_targetfile);
+            SetHeader("Content-Type", suffix);
+            SetHeader("Content-Lengt", std::to_string(filesize));
         }
-        std::string suffix = Uri2Suffix(_targetfile);
-        filesize = Util::FileSize(_targetfile);
-        SetHeader("Content-Type", suffix);
-        SetHeader("Content-Lengt", std::to_string(filesize));
         return true;
     }
 
@@ -208,12 +256,23 @@ public:
     std::string _targetfile;
 };
 
+using http_fun_t = std::function<void(HttpRequest &req, HttpResponse &resp)>; // 接口函数
+
 class Http
 {
 public:
     Http(uint16_t port)
         : _tsvrp(std::make_unique<TcpServer>(port))
     {
+    }
+
+    // 注册方法
+    void RegisterService(const std::string name, http_fun_t service)
+    {
+        std::string key = webroot + name;
+        if (_route.find(key) != _route.end()) // 注册过直接返回
+            return;
+        _route.insert(std::make_pair(key, service));
     }
 
     void HandlerHttpRquest(std::shared_ptr<Socket> &sock, InetAddr &client)
@@ -230,11 +289,27 @@ public:
 
             // 处理请求
             HttpResponse resp;
-            resp.SetTargetFile(req.Uri());
-            if (resp.MakeResponse())
+            if (req.isInteract())
             {
-                std::string response_str = resp.Serialize();
-                sock->Send(response_str);
+                if (_route.find(req.Uri()) == _route.end()) // 没有注册该方法重定向到404
+                {
+                    // TODO
+                }
+                else
+                {
+                    _route[req.Uri()](req, resp); // 调用注册的方法
+                    std::string response_str = resp.Serialize();
+                    sock->Send(response_str);
+                }
+            }
+            else
+            {
+                resp.SetTargetFile(req.Uri());
+                if (resp.MakeResponse())
+                {
+                    std::string response_str = resp.Serialize();
+                    sock->Send(response_str);
+                }
             }
         }
     }
@@ -251,4 +326,5 @@ public:
 
 private:
     std::unique_ptr<TcpServer> _tsvrp;
+    std::unordered_map<std::string, http_fun_t> _route; // RESTful风格的接口函数
 };
