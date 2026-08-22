@@ -21,7 +21,7 @@ int main()
     char buffer[1024];
     while (true)
     {
-        ssize_t n = read(0, buffer, sizeof(buffer));
+        ssize_t n = read(0, buffer, sizeof(buffer) - 1);
         if (n > 0)
         {
             buffer[n - 1]; // 去掉换行符
