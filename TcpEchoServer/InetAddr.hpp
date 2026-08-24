@@ -5,6 +5,10 @@
 class InetAddr
 {
 public:
+    InetAddr()
+    {
+    }
+
     // 网络转主机
     InetAddr(struct sockaddr_in addr)
         : _addr(addr)
