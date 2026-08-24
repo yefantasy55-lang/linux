@@ -105,7 +105,7 @@ public:
             }
             else
             {
-                LOG(LogLevel::INFO) << "epoll_ctl add sockfd success: " << sockfd;
+                LOG(LogLevel::INFO) << "epoll_ctl add sockfd success: " << sockfd->Fd();
             }
         }
     }
