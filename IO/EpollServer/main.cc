@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
     Enable_Console_Log_Strategy();
     uint16_t port = std::stoi(argv[1]);
 
-    std::unique_ptr<PollServer> svr = std::make_unique<PollServer>(port);
+    std::unique_ptr<EpollServer> svr = std::make_unique<EpollServer>(port);
     svr->Start();
 
     return 0;
