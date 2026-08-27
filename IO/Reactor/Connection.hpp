@@ -13,6 +13,8 @@ public:
     }
 
     virtual int GetSockFd() = 0;
+    virtual uint32_t GetEvent() = 0;
+    virtual void SetEvent() = 0;
 
 private:
     int _sockfd;
