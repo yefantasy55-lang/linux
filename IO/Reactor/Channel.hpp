@@ -3,6 +3,10 @@
 #include <string>
 #include "Connection.hpp"
 #include "InetAddr.hpp"
+#include "Log.hpp"
+#include "Common.hpp"
+
+using namespace yzq;
 
 #define SIZE 1024
 
@@ -12,6 +16,7 @@ public:
     Channel(int sockfd, InetAddr &client)
         : _sockfd(sockfd), _client(client)
     {
+        SetNonBlock(_sockfd);
     }
 
     int GetSockFd() override
@@ -21,10 +26,13 @@ public:
 
     void Recver() override
     {
+        char buffer[SIZE];
         while (true)
         {
-            char buffer[SIZE];
-            int n = recv(_sockfd, buffer, sizeof(buffer) - 1, 0);
+            buffer[0] = 0;
+            LOG(LogLevel::DEBUG) << "enter recver: " << _sockfd;
+            ssize_t n = recv(_sockfd, buffer, sizeof(buffer) - 1, 0);
+            LOG(LogLevel::DEBUG) << "n: " << n;
             if (n > 0)
             {
                 buffer[n] = 0;

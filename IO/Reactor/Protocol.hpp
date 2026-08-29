@@ -163,6 +163,7 @@ public:
     bool Decode(std::string &buffer, std::string *package)
     {
         // 50\r\n{"x":10,"y":20,"oper":'+'}\r\n
+        LOG(LogLevel::DEBUG) << "enter Deconde ...";
         ssize_t pos = buffer.find(sep);
         if (pos == std::string::npos)
         {

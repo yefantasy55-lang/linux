@@ -139,8 +139,8 @@ public:
             return;
         }
 
-        uint32_t new_event = EPOLLET | (enableread ? EPOLLIN : 0 | enablewrite ? EPOLLOUT
-                                                                               : 0);
+        uint32_t new_event = (EPOLLET | (enableread ? EPOLLIN : 0) | (enablewrite ? EPOLLOUT
+                                                                                : 0));
 
         _connections[sockfd]->SetEvent(new_event);
         _epoller_ptr->ModEvent(sockfd, new_event);
