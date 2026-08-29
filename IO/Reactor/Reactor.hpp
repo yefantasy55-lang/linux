@@ -42,6 +42,11 @@ private:
         return _connections.empty();
     }
 
+    int LoopOnce(int timeout)
+    {
+        return _epoller_ptr->WaitEvents(_revs, revs_num, timeout);
+    }
+
     // 事件派发器
     void Dispatcher(int n)
     {
@@ -50,11 +55,26 @@ private:
             int sockfd = _revs[i].data.fd;
             uint32_t events = _revs[i].events;
 
+            // 套接字错误或者对端链接关闭，统一转化为读写错误
+            if ((events & EPOLLERR) || (events & EPOLLHUP))
+            {
+                events |= (EPOLLIN | EPOLLOUT);
+            }
+
             if (events & EPOLLIN) // 读事件就绪
             {
+                if (IsConnectionExists(sockfd))
+                {
+                    _connections[sockfd]->Recver();
+                }
             }
-            else if (events & EPOLLOUT) // 写事假就绪
+
+            if (events & EPOLLOUT) // 写事件就绪
             {
+                if (IsConnectionExists(sockfd))
+                {
+                    _connections[sockfd]->Sender();
+                }
             }
         }
     }
@@ -77,7 +97,9 @@ public:
         while (true)
         {
             int timeout = -1;
-            int n = _epoller_ptr->WaitEvents(_revs, revs_num, timeout);
+            PrintConnection();
+            int n = LoopOnce(timeout);
+            Dispatcher(n);
         }
 
         _isrunning = false;
@@ -95,25 +117,43 @@ public:
         uint32_t events = conn->GetEvent();
 
         _epoller_ptr->AddEvent(sockfd, events);
-        // ?
+        conn->SetOwner(this);
         _connections[sockfd] = conn;
     }
 
-    void DelConnection(std::shared_ptr<Connection> &conn)
+    void DelConnection(int sockfd)
     {
-        if (!IsConnectionExists(conn))
-        {
-            LOG(LogLevel::WARNING) << "conn is no exists: " << conn->GetSockFd();
-            return;
-        }
-
-        int sockfd = conn->GetSockFd();
 
         _epoller_ptr->DelEvent(sockfd);
         _connections.erase(sockfd);
         close(sockfd);
 
         LOG(LogLevel::INFO) << "client quit: " << sockfd;
+    }
+
+    void EnableReadWrite(int sockfd, bool enableread, bool enablewrite)
+    {
+        if (!IsConnectionExists(sockfd))
+        {
+            LOG(LogLevel::WARNING) << "EnableReadWrite, conn is exists: " << sockfd;
+            return;
+        }
+
+        uint32_t new_event = EPOLLET | (enableread ? EPOLLIN : 0 | enablewrite ? EPOLLOUT
+                                                                               : 0);
+
+        _connections[sockfd]->SetEvent(new_event);
+        _epoller_ptr->ModEvent(sockfd, new_event);
+    }
+
+    void PrintConnection()
+    {
+        std::cout << "当前Reactor正在进行管理的fd List:";
+        for (auto &conn : _connections)
+        {
+            std::cout << conn.second->GetSockFd() << " ";
+        }
+        std::cout << "\r\n";
     }
 
     void Stop()

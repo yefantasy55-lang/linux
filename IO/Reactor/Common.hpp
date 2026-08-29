@@ -3,6 +3,7 @@
 #include <iostream>
 #include <functional>
 #include <unistd.h>
+#include <fcntl.h>
 #include <string>
 #include <cstring>
 #include <sys/socket.h>
@@ -10,7 +11,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
-#define CONV(addr) ((struct sockaddr*)&addr)
+#define CONV(addr) ((struct sockaddr *)&addr)
 
 enum ExitCode
 {
@@ -27,6 +28,16 @@ enum ExitCode
     EPOOL_WAIT_ERR
 };
 
+void SetNonBlock(int fd)
+{
+    int f1 = fcntl(fd, F_GETFL);
+    if (f1 < 0)
+    {
+        return;
+    }
+    fcntl(fd, F_SETFL, f1 | O_NONBLOCK);
+}
+
 class NoCopy
 {
 public:
@@ -35,5 +46,6 @@ public:
     // 禁用拷贝构造
     NoCopy(const NoCopy &) = delete;
     const NoCopy &operator=(const NoCopy &) = delete;
+
 private:
 };

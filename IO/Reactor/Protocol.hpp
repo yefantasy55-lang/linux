@@ -181,88 +181,23 @@ public:
     }
 
     // 处理请求数据
-    void GetRequest(std::shared_ptr<Socket> &sock, InetAddr &client)
+    std::string Execute(std::string &json_package)
     {
-        std::string buffer_queue; // 接收缓冲区
-        while (true)
-        {
-            int n = sock->Recv(&buffer_queue);
-            if (n > 0)
-            {
-                std::string json_package; // 一条有效报文
 
-                // 1.解析客户端的报文
-                while (Decode(buffer_queue, &json_package))
-                {
-                    // 2.得到一条有效报文后进行反序列化
-                    Request rq;
-                    bool ds_ok = rq.Deserialize(json_package);
-                    if (!ds_ok)
-                    {
-                        continue; // 反序列失败跳过当前该报文
-                    }
+        LOG(LogLevel::DEBUG) << "进入到protocol Execute begnin";
 
-                    // 3.将反序列化后的数据交于应用层处理
-                    Response rp = _func(rq);
+        Request rq;
+        rq.Deserialize(json_package);
 
-                    // 4.将应用层处理完的结果序列化
-                    std::string json_str = rp.Serialize();
+        Response rp = _func(rq);
 
-                    // 5.封装报文
-                    std::string message = Encode(json_str);
+        std::string json_str = rp.Serialize();
 
-                    // 6.发送报文
-                    sock->Send(message);
-                };
-            }
-            else if (n == 0)
-            {
-                LOG(LogLevel::INFO) << "client:" << client.StringAddr() << " Quit!";
-                break;
-            }
-            else
-            {
-                LOG(LogLevel::WARNING) << "client:" << client.StringAddr() << ", recv error";
-                break;
-            }
-        }
-    }
+        std::string message = Encode(json_str);
 
-    // 获取应答报文
-    bool GetResponse(std::shared_ptr<Socket> &client, std::string &resp_buff, Response *resp)
-    {
-        while (true)
-        {
-            int n = client->Recv(&resp_buff);
-            if (n > 0)
-            {
-                std::string json_package; // 一条有效报文
+        LOG(LogLevel::DEBUG) << "进入到protocol Execute end";
 
-                while (Decode(resp_buff, &json_package))
-                {
-                    resp->Deserialize(json_package);
-                }
-                return true;
-            }
-            else if (n == 0)
-            {
-                std::cout << "server quit " << std::endl;
-                return false;
-            }
-            else
-            {
-                std::cout << "recv error" << std::endl;
-                return false;
-            }
-        }
-    }
-
-    // 构建json请求报文
-    std::string BuildRequestString(int &x, int &y, char &oper)
-    {
-        Request rq(x, y, oper);
-        std::string json_rq = rq.Serialize();
-        return Encode(json_rq);
+        return message;
     }
 
     ~Protocol()

@@ -25,7 +25,7 @@ namespace yzq
         virtual void SocketOrDie() = 0;                                       // 创建套接字
         virtual void BindOrDie(uint16_t port) = 0;                            // 绑定套接字
         virtual void ListenOrDie(int backlog) = 0;                            // 监听套接字
-        virtual std::shared_ptr<Socket> Accept(InetAddr *client) = 0;         // 接受连接
+        virtual int Accept(InetAddr *client) = 0;                             // 接受连接
         virtual void Close() = 0;                                             // 关闭对应套接字
         virtual int Recv(std::string *out) = 0;                               // 从套接字中接收数据
         virtual int Send(const std::string &message) = 0;                     // 发送数据
@@ -105,18 +105,31 @@ namespace yzq
             LOG(LogLevel::INFO) << "listen success";
         }
 
-        std::shared_ptr<Socket> Accept(InetAddr *client) override
+#define ACCEPT_DONE -1
+#define ACCEPT_CONTINUE -2
+#define ACCEPT_ERR -3
+        int Accept(InetAddr *client) override
         {
             struct sockaddr_in peer;
             socklen_t len = sizeof(peer);
             int fd = accept(_sockfd, CONV(peer), &len);
             if (fd < 0)
             {
-                LOG(LogLevel::WARNING) << "accept warning ...";
-                return nullptr;
+                if (errno == EAGAIN || errno == EWOULDBLOCK)
+                {
+                    return -1;
+                }
+                else if (errno == EINTR)
+                {
+                    return -2;
+                }
+                else
+                {
+                    LOG(LogLevel::WARNING) << "accept error";
+                    return -3;
+                }
             }
-            client->SetAddr(peer);
-            return std::make_shared<TcpSocket>(fd);
+            return fd;
         }
 
         void Close() override
